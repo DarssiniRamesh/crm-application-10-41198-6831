@@ -9,36 +9,8 @@ const swaggerSpec = require('../swagger');
 const app = express();
 
 app.use(cors({
-  // Dynamically allow frontend origin(s) via env
-  // FRONTEND_ORIGIN takes precedence; REACT_APP_FRONTEND_URL is used as fallback if present.
-  // If neither are set, default to dev-safe localhost origins on port 3001.
-  origin: (function () {
-    const envFrontendOrigin = (process.env.FRONTEND_ORIGIN || '').trim();
-    const envReactFrontendUrl = (process.env.REACT_APP_FRONTEND_URL || '').trim();
-    const defaultDevOrigins = ['http://localhost:3001', 'http://0.0.0.0:3001'];
-
-    function parseOrigins(val) {
-      return val.split(',').map(s => s.trim()).filter(Boolean);
-    }
-
-    let allowedOrigins = [];
-    if (envFrontendOrigin) {
-      allowedOrigins = parseOrigins(envFrontendOrigin);
-    } else if (envReactFrontendUrl) {
-      allowedOrigins = parseOrigins(envReactFrontendUrl);
-    } else {
-      allowedOrigins = defaultDevOrigins;
-    }
-
-    // Return an origin function for fine-grained control
-    return function (origin, callback) {
-      // Allow non-browser requests (no Origin header) such as curl or health checks
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      // Not allowed: proceed without CORS headers
-      return callback(null, false);
-    };
-  })(),
+  // Hardcoded CORS origin per operations request to eliminate configuration drift.
+  origin: 'https://vscode-internal-29664-beta.beta01.cloud.kavia.ai:3001',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false,
