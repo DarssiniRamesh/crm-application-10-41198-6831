@@ -1,6 +1,6 @@
 /**
  * Server entrypoint for the Express app.
- * - Forces deterministic bind to 0.0.0.0:3000 via npm scripts (overrides .env).
+ * - Forces deterministic bind to 0.0.0.0:3002 via npm scripts (overrides .env).
  * - Logs effective host/port on startup.
  * - Performs readiness self-checks for '/', '/health', and '/api/v1/health'.
  */
@@ -8,7 +8,8 @@
 const http = require('http'); // for readiness probes
 const app = require('./app');
 
-const DEFAULT_PORT = 3000;
+// Default only used if PORT is not provided via env/script.
+const DEFAULT_PORT = 3002;
 const DEFAULT_HOST = '0.0.0.0';
 
 // Determine effective host and port.
@@ -84,7 +85,7 @@ process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
 // Handle unhandled async errors to avoid silent failures
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
   // eslint-disable-next-line no-console
   console.error('[fatal] Unhandled promise rejection:', reason);
 });
