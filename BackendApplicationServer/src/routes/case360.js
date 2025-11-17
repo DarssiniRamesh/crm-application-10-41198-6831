@@ -9,7 +9,7 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Case360
- *   description: 360-degree case view
+ *   description: "360-degree case view"
  */
 
 /**
@@ -17,7 +17,7 @@ const router = express.Router();
  * /case360/{caseId}:
  *   get:
  *     summary: Get 360 view of a case
- *     description: Returns a complete 360-degree object for a case by ID. Known seeded caseId: CSE-1001.
+ *     description: "Returns a complete 360-degree object for a case by ID. Known seeded caseId: CSE-1001."
  *     tags: [Case360]
  *     parameters:
  *       - name: caseId

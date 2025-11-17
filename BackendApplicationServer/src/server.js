@@ -63,4 +63,16 @@ const shutdown = () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
+// Handle unhandled async errors to avoid silent failures
+process.on('unhandledRejection', (reason, promise) => {
+  // eslint-disable-next-line no-console
+  console.error('[fatal] Unhandled promise rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  // eslint-disable-next-line no-console
+  console.error('[fatal] Uncaught exception:', err);
+  process.exit(1);
+});
+
 module.exports = server;
