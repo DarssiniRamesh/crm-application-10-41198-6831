@@ -40,13 +40,33 @@ const server = app.listen(PORT, HOST, () => {
 // Server error handling (e.g., EADDRINUSE)
 server.on('error', (err) => {
   if (err && err.code === 'EADDRINUSE') {
-    // eslint-disable-next-line no-console
-    console.error(`Port ${PORT} is already in use. Ensure no other process is listening on this port.`);
+    // If port is in use, perform a quick readiness probe on the expected health endpoint.
+    // If it responds with 200, assume the server is already running and exit cleanly (code 0).
+    const probePath = '/health';
+    http
+      .get({ host: '127.0.0.1', port: PORT, path: probePath }, (res) => {
+        if (res.statusCode === 200) {
+          // eslint-disable-next-line no-console
+          console.log(`[startup] Port ${PORT} in use, but health check succeeded (HTTP 200). Assuming server is already running. Exiting without error.`);
+          res.resume();
+          process.exit(0);
+        } else {
+          // eslint-disable-next-line no-console
+          console.error(`[startup] Port ${PORT} in use and health check returned ${res.statusCode}. Please ensure no conflicting process is running.`);
+          res.resume();
+          process.exit(1);
+        }
+      })
+      .on('error', (probeErr) => {
+        // eslint-disable-next-line no-console
+        console.error(`[startup] Port ${PORT} in use and health probe failed: ${probeErr.message}`);
+        process.exit(1);
+      });
   } else {
     // eslint-disable-next-line no-console
     console.error('HTTP server error:', err);
+    process.exit(1);
   }
-  process.exit(1);
 });
 
 // Graceful shutdown handling
