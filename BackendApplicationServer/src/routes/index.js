@@ -1,3 +1,5 @@
+'use strict';
+
 const express = require('express');
 const healthController = require('../controllers/health');
 
@@ -11,7 +13,6 @@ const notificationsRouter = require('./notifications');
 const authRouter = require('./auth');
 
 const router = express.Router();
-// Health endpoint
 
 /**
  * @swagger
@@ -42,6 +43,37 @@ const router = express.Router();
  *                   example: development
  */
 router.get('/', healthController.check.bind(healthController));
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health endpoint (explicit path)
+ *     description: Returns current service health status. Mirrors the root (/) health check.
+ *     tags:
+ *       - Health
+ *     responses:
+ *       200:
+ *         description: Service health check passed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 message:
+ *                   type: string
+ *                   example: Service is healthy
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 environment:
+ *                   type: string
+ *                   example: development
+ */
+router.get('/health', healthController.check.bind(healthController));
 
 // Auth/login
 router.use('/login', authRouter);

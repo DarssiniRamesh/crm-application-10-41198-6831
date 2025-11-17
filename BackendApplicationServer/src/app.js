@@ -57,8 +57,9 @@ app.use('/docs', swaggerUi.serve, (req, res, next) => {
 // Parse JSON request body
 app.use(express.json());
 
-// Root health endpoint remains available (no prefix)
+/* Root health endpoints (no prefix) */
 app.get('/', healthController.check.bind(healthController));
+app.get('/health', healthController.check.bind(healthController));
 
 // Mount routes under /api/v1
 app.use('/api/v1', routes);
