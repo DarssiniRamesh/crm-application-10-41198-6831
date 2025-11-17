@@ -195,39 +195,117 @@ function paginate(arr, page, pageSize) {
   return arr.slice(start, start + ps);
 }
 
-// PUBLIC_INTERFACE
-function getUsers({ page, pageSize } = {}) {
-  /** Returns a list of demo users (optionally paginated). */
-  return paginate(users, page, pageSize);
+/**
+ * Apply simple filter and sort operations on an array of objects.
+ * - filter: substring match (case-insensitive) across stringifiable values
+ * - sort: "field" | "field:asc" | "field:desc"
+ * @param {Array<object>} arr
+ * @param {object} options
+ * @param {string} [options.filter]
+ * @param {string} [options.sort]
+ * @returns {Array<object>}
+ */
+function applyFilterSort(arr, { filter, sort } = {}) {
+  let out = Array.isArray(arr) ? [...arr] : [];
+
+  // Filtering: if filter provided, do case-insensitive substring search across object values.
+  if (typeof filter === 'string' && filter.trim().length > 0) {
+    const q = filter.trim().toLowerCase();
+    out = out.filter((item) => {
+      try {
+        const values = Object.values(item).flatMap((v) => {
+          if (v == null) return [];
+          if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return [String(v)];
+          if (typeof v === 'object') {
+            // Flatten shallow object values too
+            return Object.values(v).map((x) => (x == null ? '' : String(x)));
+          }
+          return [];
+        });
+        return values.some((val) => String(val).toLowerCase().includes(q));
+      } catch (e) {
+        return false;
+      }
+    });
+  }
+
+  // Sorting
+  if (typeof sort === 'string' && sort.trim().length > 0) {
+    const [rawField, rawDir] = sort.split(':');
+    const field = (rawField || '').trim();
+    const dir = ((rawDir || 'asc').trim().toLowerCase()) === 'desc' ? -1 : 1;
+
+    if (field) {
+      out.sort((a, b) => {
+        const av = a && Object.prototype.hasOwnProperty.call(a, field) ? a[field] : undefined;
+        const bv = b && Object.prototype.hasOwnProperty.call(b, field) ? b[field] : undefined;
+
+        // Normalize for comparison
+        const na = av == null ? '' : String(av).toLowerCase();
+        const nb = bv == null ? '' : String(bv).toLowerCase();
+
+        if (na < nb) return -1 * dir;
+        if (na > nb) return 1 * dir;
+        return 0;
+      });
+    }
+  }
+
+  return out;
 }
 
 // PUBLIC_INTERFACE
-function getTickets({ page, pageSize } = {}) {
-  /** Returns a list of demo tickets (optionally paginated). */
-  return paginate(tickets, page, pageSize);
+function getUsers({ page, pageSize, filter, sort } = {}) {
+  /** Returns a list of demo users with optional filter/sort/pagination. */
+  const processed = applyFilterSort(users, { filter, sort });
+  return paginate(processed, page, pageSize);
+}
+
+/** Allowed ticket statuses for validation */
+const TICKET_STATUSES = ['open', 'in-progress', 'resolved', 'closed'];
+
+// PUBLIC_INTERFACE
+function getTickets({ page, pageSize, filter, sort } = {}) {
+  /** Returns a list of demo tickets with optional filter/sort/pagination. */
+  const processed = applyFilterSort(tickets, { filter, sort });
+  return paginate(processed, page, pageSize);
 }
 
 // PUBLIC_INTERFACE
 function addTicket(payload) {
   /**
    * Create a new ticket in-memory and return it.
-   * Required: type, description, requestor (user or {id})
+   * Required: type, description, requestor (user or {id}), status
    */
   if (!payload || typeof payload !== 'object') {
     throw new Error('Invalid payload');
   }
-  const { type, description, requestor, category, subCategory, severity, assignedAgent } = payload;
-  if (!type || !description) {
-    throw new Error('Missing required fields: type, description');
+  const { type, description, requestor, category, subCategory, severity, assignedAgent, status } = payload;
+
+  // Validate required fields explicitly
+  const missing = [];
+  if (!type) missing.push('type');
+  if (!description) missing.push('description');
+  if (!requestor) missing.push('requestor');
+  if (!status) missing.push('status');
+  if (missing.length > 0) {
+    throw new Error(`Missing required fields: ${missing.join(', ')}`);
+  }
+
+  // Validate status
+  const statusNorm = String(status).toLowerCase();
+  if (!TICKET_STATUSES.includes(statusNorm)) {
+    throw new Error(`Invalid status. Allowed: ${TICKET_STATUSES.join(', ')}`);
   }
 
   // Resolve requestor object
   let reqUser = requestor;
   if (!reqUser || typeof reqUser !== 'object') {
-    reqUser = users[0];
+    throw new Error('Invalid requestor payload; expected object (or { id })');
   } else if (reqUser.id) {
     const match = users.find(u => u.id === reqUser.id);
-    reqUser = match || users[0];
+    if (!match) throw new Error(`Unknown requestor id: ${reqUser.id}`);
+    reqUser = match;
   }
 
   // Resolve assigned agent if provided by id
@@ -249,7 +327,7 @@ function addTicket(payload) {
     severity: severity || 'medium',
     description,
     requestor: reqUser,
-    status: 'open',
+    status: statusNorm,
     assignedAgent: assigned,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
@@ -258,33 +336,50 @@ function addTicket(payload) {
   return ticket;
 }
 
+/** Allowed complaint statuses for validation */
+const COMPLAINT_STATUSES = ['open', 'escalated', 'resolved'];
+
 // PUBLIC_INTERFACE
-function getComplaints({ page, pageSize } = {}) {
-  /** Returns a list of demo complaints (optionally paginated). */
-  return paginate(complaints, page, pageSize);
+function getComplaints({ page, pageSize, filter, sort } = {}) {
+  /** Returns a list of demo complaints with optional filter/sort/pagination. */
+  const processed = applyFilterSort(complaints, { filter, sort });
+  return paginate(processed, page, pageSize);
 }
 
 // PUBLIC_INTERFACE
 function addComplaint(payload) {
   /**
    * Create a new complaint in-memory and return it.
-   * Required: type, description, requestor (user or {id})
+   * Required: type, description, requestor (user or {id}), status
    */
   if (!payload || typeof payload !== 'object') {
     throw new Error('Invalid payload');
   }
-  const { type, description, requestor, severity, escalationDetails } = payload;
-  if (!type || !description) {
-    throw new Error('Missing required fields: type, description');
+  const { type, description, requestor, severity, escalationDetails, status } = payload;
+
+  // Validate required
+  const missing = [];
+  if (!type) missing.push('type');
+  if (!description) missing.push('description');
+  if (!requestor) missing.push('requestor');
+  if (!status) missing.push('status');
+  if (missing.length > 0) {
+    throw new Error(`Missing required fields: ${missing.join(', ')}`);
+  }
+
+  const statusNorm = String(status).toLowerCase();
+  if (!COMPLAINT_STATUSES.includes(statusNorm)) {
+    throw new Error(`Invalid status. Allowed: ${COMPLAINT_STATUSES.join(', ')}`);
   }
 
   // Resolve requestor object
   let reqUser = requestor;
   if (!reqUser || typeof reqUser !== 'object') {
-    reqUser = users[1] || users[0];
+    throw new Error('Invalid requestor payload; expected object (or { id })');
   } else if (reqUser.id) {
     const match = users.find(u => u.id === reqUser.id);
-    reqUser = match || users[0];
+    if (!match) throw new Error(`Unknown requestor id: ${reqUser.id}`);
+    reqUser = match;
   }
 
   const now = new Date();
@@ -294,7 +389,7 @@ function addComplaint(payload) {
     severity: severity || 'medium',
     description,
     requestor: reqUser,
-    status: 'open',
+    status: statusNorm,
     escalationDetails: escalationDetails || 'NA',
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),

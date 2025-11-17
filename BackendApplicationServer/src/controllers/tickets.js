@@ -7,10 +7,12 @@ class TicketsController {
   list(req, res) {
     /** List demo tickets with optional pagination (page, pageSize). */
     try {
-      const { page, pageSize } = req.query || {};
+      const { page, pageSize, sort, filter } = req.query || {};
       const data = store.getTickets({
         page: page ? Number(page) : undefined,
         pageSize: pageSize ? Number(pageSize) : undefined,
+        sort,
+        filter,
       });
       return res.status(200).json(data);
     } catch (err) {

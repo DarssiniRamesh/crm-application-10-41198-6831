@@ -22,6 +22,8 @@ const router = express.Router();
  *     parameters:
  *       - $ref: '#/components/parameters/page'
  *       - $ref: '#/components/parameters/pageSize'
+ *       - $ref: '#/components/parameters/sort'
+ *       - $ref: '#/components/parameters/filter'
  *     responses:
  *       200:
  *         description: List of tickets
