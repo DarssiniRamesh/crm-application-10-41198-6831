@@ -8,6 +8,7 @@ const complaintsRouter = require('./complaints');
 const case360Router = require('./case360');
 const reportsRouter = require('./reports');
 const notificationsRouter = require('./notifications');
+const authRouter = require('./auth');
 
 const router = express.Router();
 // Health endpoint
@@ -41,6 +42,9 @@ const router = express.Router();
  *                   example: development
  */
 router.get('/', healthController.check.bind(healthController));
+
+// Auth/login
+router.use('/login', authRouter);
 
 // Mount resource routers
 router.use('/users', usersRouter);
